@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linea积分和排名批量查询</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .info {
+            margin-bottom: 30px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            resize: vertical;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 30px;
+        }
+        .summary {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Linea积分和排名批量查询</h1>
+        <div class="info">
+            <p>接口繁忙时可以选择: <a href="https://www.openblocklabs.com/app/linea/dashboard" target="_blank">手动查询&nbsp;<i class="bi bi-box-arrow-up-right"></i></a>、如果钱包还没有激活请先：<a href="https://referrals.linea.build/?refCode=S26dTCgtvf" target="_blank">点击激活积分&nbsp;<i class="bi bi-box-arrow-up-right"></i></a></p>
+            <p>所有人请求都经过代理,意味着所有人的查询结果都一致,不会被女巫.</p>
+            <p><a href="https://github.com/lyen1688/Linea_rank" target="_blank">github源代码开源&nbsp;<i class="bi bi-box-arrow-up-right"></i></a>、<a href="https://ybot.io" target="_blank">Runes符文批量铸造：ybot.io&nbsp;<i class="bi bi-box-arrow-up-right"></i></a>（全网铸造成本最低，支持无限加速！）</p>
+        </div>
+        <div class="mb-3">
+            <textarea class="form-control" placeholder="输入地址列表,每行一个地址" id="address-input"></textarea>
+        </div>
+        <div class="d-grid">
+            <button class="btn btn-primary" type="button" id="query-btn">
+                <i class="bi bi-search"></i> 批量查询
+            </button>
+        </div>
+        <div id="result"></div>
+        <p class="author-info">
+            by：老叶1999.eth &nbsp;&nbsp;作者推特：<a href="https://twitter.com/1999_eth" target="_blank">https://twitter.com/1999_eth</a>
+        </p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const addressInput = document.getElementById('address-input');
+        const queryBtn = document.getElementById('query-btn');
+        const resultDiv = document.getElementById('result');
+    
+        queryBtn.addEventListener('click', function() {
+            const addresses = addressInput.value.split('\n').filter(address => address.trim() !== '' && address.startsWith('0x'));
+    
+            // 清空上一次的结果
+            resultDiv.innerHTML = ''; 
+    
+            // 创建累计余额和导出按钮的容器
+            let summaryContainer = document.createElement('div');
+            summaryContainer.className = 'd-flex justify-content-between align-items-center mb-3 mt-4';
+            summaryContainer.id = 'total-summary-container';
+    
+            let totalSummarySpan = document.createElement('span');
+            totalSummarySpan.id = 'total-summary';
+            totalSummarySpan.textContent = '积分累计：正在查询...';
+            summaryContainer.appendChild(totalSummarySpan);
+    
+            // 在结果之前插入累计余额容器
+            resultDiv.parentNode.insertBefore(summaryContainer, resultDiv);
+    
+            let resultTable = document.createElement('table');
+            resultTable.className = 'table table-striped';
+            resultTable.innerHTML = '<thead><tr><th>钱包地址</th><th>排名</th><th>积分</th></thead><tbody>';
+    
+            addresses.forEach((address, index) => {
+                let row = resultTable.insertRow(-1);
+                row.id = 'address-row-' + index;
+                row.insertCell(0).textContent = address;
+                row.insertCell(1).id = 'rank-' + index;
+                row.insertCell(2).id = 'xp-' + index;
+                row.cells[1].textContent = '正在查询...';
+                row.cells[2].textContent = '正在查询...';
+            });
+    
+            resultTable.appendChild(document.createElement('tbody'));
+            resultDiv.appendChild(resultTable);
+    
+            processBatch(addresses, 0);
+        });
+
+        async function processBatch(addresses, index) {
+            const address = addresses[index];
+            const response = await fetch('https://linea-rank-mgjjmoqgwv.ap-southeast-1.fcapp.run/getUserPoints', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ "wallet_address": address.toLowerCase() })
+                    });
+            const data = await response.json();
+
+            const rank = data[0].rank_xp;
+            const xp = data[0].xp;
+
+            document.getElementById('rank-' + index).textContent = rank;
+            document.getElementById('xp-' + index).textContent = xp;
+
+            const newIndex = index + 1;
+            if (newIndex < addresses.length) {
+                processBatch(addresses, newIndex);
+            } else {
+                updateTotalSummary();
+            }
+        }
+
+        function updateTotalSummary() {
+            let totalXP = 0;
+            const xpElements = document.querySelectorAll('[id^=xp-]');
+            xpElements.forEach(element => {
+                const xp = parseInt(element.textContent);
+                if (!isNaN(xp)) {
+                    totalXP += xp;
+                }
+            });
+            document.getElementById('total-summary').textContent = '积分累计: ' + totalXP + ' XP';
+            addExportButton();
+        }
+
+        function addExportButton() {
+            let exportBtn = document.getElementById('export-btn');
+            if (!exportBtn) {
+                exportBtn = document.createElement('button');
+                exportBtn.className = 'btn btn-secondary';
+                exportBtn.id = 'export-btn';
+                exportBtn.textContent = '导出表格';
+                exportBtn.addEventListener('click', exportToCSV);
+                document.getElementById('total-summary-container').appendChild(exportBtn);
+            }
+        }
+
+        function exportToCSV() {
+            const addresses = addressInput.value.split('\n').filter(address => address.trim() !== '' && address.startsWith('0x'));
+            let csvContent = "data:text/csv;charset=utf-8," + "钱包地址,排名,积分\n";
+
+            addresses.forEach(function(address, index) {
+                const rank = document.getElementById('rank-' + index).textContent;
+                const xp = document.getElementById('xp-' + index).textContent;
+                csvContent += address + "," + rank + "," + xp + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "wallet_balances.csv");
+            document.body.appendChild(link); // Required for FF
+
+            link.click();
+        }
+    </script> 
+    
+</body>
+</html>
