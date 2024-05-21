@@ -128,20 +128,30 @@
 
         async function processBatch(addresses, index) {
             const address = addresses[index];
-            const response = await fetch('https://linea-rank-mgjjmoqgwv.ap-southeast-1.fcapp.run/getUserPoints', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ "wallet_address": address.toLowerCase() })
-                    });
-            const data = await response.json();
-
-            const rank = data[0].rank_xp;
-            const xp = data[0].xp;
-
-            document.getElementById('rank-' + index).textContent = rank;
-            document.getElementById('xp-' + index).textContent = xp;
+            try {
+                const response = await fetch('https://linea-rank-mgjjmoqgwv.ap-southeast-1.fcapp.run/getUserPoints', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ "wallet_address": address.toLowerCase() })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const rank = data[0]?.rank_xp || 'N/A';
+                const xp = data[0]?.xp || 'N/A';
+                document.getElementById('rank-' + index).textContent = rank;
+                document.getElementById('xp-' + index).textContent = xp;
+            } catch (error) {
+                console.error('Error fetching or processing data for address:', address, error);
+                // 如果出错，将 rank 和 xp 设置为 'Error'
+                document.getElementById('rank-' + index).textContent = 'Error';
+                document.getElementById('xp-' + index).textContent = 'Error';
+            }
 
             const newIndex = index + 1;
             if (newIndex < addresses.length) {
